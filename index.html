@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>每日雷达</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23b4532a' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23b4532a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600&display=swap" rel="stylesheet">
+<script src="vendor/marked.min.js"></script>
+<script src="vendor/purify.min.js"></script>
+<style>
+:root{
+  --bg:#f7f4ee; --paper:#fffdf8; --ink:#24211c; --ink2:#5d574d; --ink3:#8f877a;
+  --line:#e4ddd0; --accent:#b4532a; --accent-soft:#f3e2d6; --ok:#2f7d4f; --ok-soft:#dcefe2;
+  --star:#b8860b; --shadow:0 1px 2px rgba(60,40,10,.06),0 2px 8px rgba(60,40,10,.05);
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif;
+  --serif:"Noto Serif SC","Songti SC","STSong",serif;
+  --fs:18px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#171614; --paper:#1f1d1a; --ink:#e8e2d6; --ink2:#b5ad9f; --ink3:#857d70;
+  --line:#34312c; --accent:#e08a5f; --accent-soft:#3a2a20; --ok:#6cc08b; --ok-soft:#1f3327; --star:#e0b44a;
+  --shadow:none;}}
+:root[data-theme="dark"]{
+  --bg:#171614; --paper:#1f1d1a; --ink:#e8e2d6; --ink2:#b5ad9f; --ink3:#857d70;
+  --line:#34312c; --accent:#e08a5f; --accent-soft:#3a2a20; --ok:#6cc08b; --ok-soft:#1f3327; --star:#e0b44a;
+  --shadow:none;}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.6;-webkit-text-size-adjust:100%}
+a{color:var(--accent)}
+button,select,input,textarea{font:inherit;color:inherit}
+.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.top-in{max-width:880px;margin:0 auto;padding:10px 16px;display:flex;gap:10px;align-items:center}
+.brand{font-weight:700;letter-spacing:.02em;margin-right:4px;white-space:nowrap}
+.tabs{display:flex;background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:3px}
+.tabs button{border:0;background:none;padding:5px 14px;border-radius:999px;cursor:pointer;color:var(--ink2)}
+.tabs button.on{background:var(--accent);color:#fff}
+.spacer{flex:1}
+.icon{border:1px solid var(--line);background:var(--paper);border-radius:10px;padding:5px 10px;cursor:pointer;color:var(--ink2)}
+select.icon{padding:5px 8px;max-width:9.5em}
+main{max-width:880px;margin:0 auto;padding:12px 16px 120px}
+.muted{color:var(--ink3)} .small{font-size:13px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.notice{padding:14px 16px;margin:12px 0}
+.err{border-color:#d9534f;color:#c0392b}
+/* brief */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px}
+.chip{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:4px 12px;cursor:pointer;font-size:14px;color:var(--ink2)}
+.chip.on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.groupnav{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none}
+.groupnav::-webkit-scrollbar{display:none}
+.groupnav a{flex:none;font-size:13px;text-decoration:none;color:var(--ink2);border:1px solid var(--line);border-radius:8px;padding:3px 9px;background:var(--paper)}
+h2.group{font-size:15px;margin:22px 2px 8px;color:var(--ink2);font-weight:600;scroll-margin-top:70px}
+h2.group .n{color:var(--ink3);font-weight:400}
+.item{display:flex;gap:12px;padding:12px 14px;margin:8px 0;cursor:pointer;user-select:none;transition:border-color .12s,background .12s}
+.item:active{transform:scale(.995)}
+.item.sel{border-color:var(--ok);background:var(--ok-soft)}
+.box{flex:none;width:22px;height:22px;border-radius:7px;border:2px solid var(--line);margin-top:2px;display:grid;place-items:center;color:#fff;font-size:14px}
+.item.sel .box{background:var(--ok);border-color:var(--ok)}
+.item .body{flex:1;min-width:0}
+.item .t{font-weight:600;line-height:1.45}
+.item .star{display:block;color:var(--star);font-size:14px;margin-top:3px}
+.item .intro{color:var(--ink2);font-size:15px;margin-top:3px}
+.item .meta{color:var(--ink3);font-size:12.5px;margin-top:5px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.item .meta a{text-decoration:none}
+.item .id{font-family:ui-monospace,Menlo,monospace}
+.dirty{outline:2px dashed var(--accent);outline-offset:-2px}
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+.bar-in{max-width:880px;margin:0 auto;display:flex;gap:10px;align-items:center}
+.btn{border:0;border-radius:12px;padding:10px 18px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.ghost{background:var(--paper);color:var(--ink2);border:1px solid var(--line)}
+details.trail{margin:8px 0 4px}
+details.trail summary{cursor:pointer;color:var(--ink2);padding:10px 14px}
+details.trail .md{padding:0 16px 12px;font-size:14px}
+.ask{border-color:var(--accent)}
+/* reader */
+.rlist{list-style:none;margin:0;padding:0}
+.rlist li{margin:8px 0}
+.rlist a{display:flex;gap:10px;padding:12px 14px;text-decoration:none;color:var(--ink);align-items:baseline}
+.rlist .pid{font-family:ui-monospace,Menlo,monospace;color:var(--ink3);font-size:13px;flex:none}
+.rlist .done{margin-left:auto;flex:none;font-size:12px;color:var(--ok)}
+.rlist .todo{margin-left:auto;flex:none;font-size:12px;color:var(--ink3)}
+.reader{max-width:38em;margin:0 auto}
+.rhead{display:flex;align-items:center;gap:8px;margin:4px 0 8px}
+.pager{display:flex;gap:8px;align-items:center}
+.article{padding:26px 24px 30px;font-family:var(--serif);font-size:var(--fs);line-height:1.9;letter-spacing:.01em}
+.article h2{font-size:1.32em;line-height:1.45;margin:0 0 .8em}
+.article h3{font-size:1.02em;margin:1.8em 0 .5em;color:var(--accent);font-family:var(--sans);letter-spacing:.04em}
+.article p{margin:.7em 0}
+.article{overflow-wrap:anywhere}
+.article strong{font-family:var(--sans);font-weight:600}
+.article sub{font-size:.75em;color:var(--ink3);font-family:var(--sans)}
+.article hr{border:0;border-top:1px solid var(--line);margin:2em 0 1em}
+.article ul,.article ol{padding-left:1.4em}
+.article a{word-break:break-all}
+.thread{margin:18px 0}
+.cmt{padding:12px 16px;margin:10px 0;font-size:15px}
+.cmt .who{font-size:12.5px;color:var(--ink3);margin-bottom:4px}
+.cmt.me{border-left:3px solid var(--accent)}
+.cmt.bot{border-left:3px solid var(--ok)}
+.cmt .md p{margin:.4em 0}
+textarea{width:100%;min-height:120px;border:1px solid var(--line);border-radius:12px;background:var(--paper);padding:12px 14px;line-height:1.7;resize:vertical}
+textarea:focus,input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.compose{margin-top:14px}
+.compose .row{display:flex;gap:10px;margin-top:8px;align-items:center}
+.setup{padding:20px;max-width:560px;margin:30px auto}
+.setup input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);margin:6px 0 12px}
+.setup ol{padding-left:1.2em;color:var(--ink2);font-size:14px}
+.toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:14px;z-index:50;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+.toast.on{opacity:.95}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:s .8s linear infinite;vertical-align:-2px}
+@keyframes s{to{transform:rotate(360deg)}}
+@media (max-width:560px){
+  .brand{display:none}
+  .article{padding:20px 16px 24px}
+  .tabs button{padding:5px 11px}
+}
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <span class="brand">每日雷达</span>
+  <div class="tabs"><button id="tab-brief">简报</button><button id="tab-read">报告</button></div>
+  <span class="spacer"></span>
+  <select id="day" class="icon" aria-label="日期"></select>
+  <button id="menu" class="icon" aria-label="设置">⋯</button>
+</div></header>
+<main id="main"></main>
+<div id="bar" class="bar" hidden><div class="bar-in" id="bar-in"></div></div>
+<div id="toast" class="toast"></div>
+
+<script>
+"use strict";
+// ---------- storage (best effort) ----------
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("radar." + k); return v === null ? d : v; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("radar." + k, v); } catch {} },
+  del(k) { try { localStorage.removeItem("radar." + k); } catch {} },
+};
+const S = {
+  repo: store.get("repo", "chongyang1999/daily_news"),
+  token: store.get("token", ""),
+  issues: null,          // all radar issues (light)
+  login: null,
+};
+const $ = s => document.querySelector(s);
+const main = $("#main");
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const md = s => DOMPurify.sanitize(marked.parse(s || "", {breaks: false}), {ADD_ATTR: ["target"]});
+function toast(t, ms = 2200) { const el = $("#toast"); el.textContent = t; el.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("on"), ms); }
+
+// ---------- theme / font size ----------
+function applyPrefs() {
+  const th = store.get("theme", "");
+  if (th) document.documentElement.dataset.theme = th; else delete document.documentElement.dataset.theme;
+  document.documentElement.style.setProperty("--fs", store.get("fs", "18") + "px");
+}
+applyPrefs();
+
+// ---------- GitHub ----------
+async function api(path, opts = {}) {
+  const r = await fetch("https://api.github.com" + path, {
+    ...opts,
+    cache: "no-store",
+    headers: { "Accept": "application/vnd.github+json", "Authorization": "Bearer " + S.token,
+               "X-GitHub-Api-Version": "2022-11-28", ...(opts.body ? {"Content-Type": "application/json"} : {}) },
+  });
+  if (!r.ok) {
+    let m = ""; try { m = (await r.json()).message; } catch {}
+    const e = new Error(`GitHub ${r.status}${m ? "：" + m : ""}`); e.status = r.status; throw e;
+  }
+  return r.status === 204 ? null : r.json();
+}
+async function loadIssues(force) {
+  if (S.issues && !force) return S.issues;
+  const out = [];
+  for (let page = 1; page <= 4; page++) {   // newest 400 radar issues are plenty (about two weeks)
+    const rows = await api(`/repos/${S.repo}/issues?labels=radar&state=all&sort=created&direction=desc&per_page=100&page=${page}`);
+    out.push(...rows.filter(i => !i.pull_request));
+    if (rows.length < 100) break;
+  }
+  S.issues = out;
+  return out;
+}
+const OVERVIEW = /^🧭\s*(\d{4}-\d{2}-\d{2})｜/;
+const ITEM = /^📝\s*(\d{4}-\d{2}-\d{2})\s*\[(P?\d{2})\]\s*(.*)$/;
+function days() {
+  const set = new Set();
+  for (const i of S.issues) { const m = i.title.match(OVERVIEW) || i.title.match(ITEM); if (m) set.add(m[1]); }
+  return [...set].sort().reverse();
+}
+
+// ---------- routing ----------
+function route() {
+  const [view, day, pid] = location.hash.replace(/^#\/?/, "").split("/");
+  return { view: view || "brief", day: day || "", pid: pid || "" };
+}
+function go(view, day, pid) { location.hash = "#/" + [view, day, pid].filter(Boolean).join("/"); }
+window.addEventListener("hashchange", render);
+$("#tab-brief").onclick = () => { if (!guardLeave()) return; go("brief", route().day); };
+$("#tab-read").onclick = () => { if (!guardLeave()) return; go("read", route().day); };
+$("#day").onchange = e => { if (!guardLeave()) { e.target.value = route().day; return; } go(route().view === "read" ? "read" : "brief", e.target.value); };
+$("#menu").onclick = settings;
+
+function setTop(view, day) {
+  $("#tab-brief").classList.toggle("on", view === "brief");
+  $("#tab-read").classList.toggle("on", view !== "brief");
+  const sel = $("#day");
+  if (!S.issues) { sel.hidden = true; return; }
+  sel.hidden = false;
+  sel.innerHTML = days().map(d => `<option value="${d}" ${d === day ? "selected" : ""}>${d.slice(5).replace("-", "月")}日</option>`).join("");
+}
+
+async function render() {
+  hideBar();
+  if (!S.token) return setup();
+  const r = route();
+  main.innerHTML = `<p class="muted"><span class="spin"></span> 读取中…</p>`;
+  try {
+    await loadIssues();
+    const day = r.day || days()[0];
+    if (!day) { setTop(r.view, ""); main.innerHTML = `<div class="card notice">还没有任何简报。</div>`; return; }
+    setTop(r.view, day);
+    if (r.view === "read" && r.pid) await renderReport(day, r.pid);
+    else if (r.view === "read") renderReportList(day);
+    else await renderBrief(day);
+  } catch (e) {
+    if (e.status === 401) { main.innerHTML = `<div class="card notice err">密钥无效或已过期。请点右上角 ⋯ 重新填写。</div>`; return; }
+    main.innerHTML = `<div class="card notice err">${esc(e.message)}</div>`;
+  }
+}
+
+// ---------- brief ----------
+const B = { issue: null, items: [], picked: new Set(), orig: new Set(), filter: store.get("filter", "all") };
+const LINE = /^\s*[-*]\s*\[([ xX])\]\s*`([phx]\d{3})`\s*\[([^\]]+)\]\(([^)]+)\)(.*)$/;
+function parseBrief(body) {
+  const idx = body.search(/^## 今日简报/m);
+  const head = idx > 0 ? body.slice(0, idx) : "";
+  const rest = idx >= 0 ? body.slice(idx) : body;
+  const groups = []; let g = null;
+  for (const ln of rest.split("\n")) {
+    const h = ln.match(/^###\s+(.+?)(?:（(\d+)）)?\s*$/);
+    if (h) { g = { name: h[1], items: [] }; groups.push(g); continue; }
+    const m = ln.match(LINE);
+    if (!m) continue;
+    if (!g) { g = { name: "候选", items: [] }; groups.push(g); }
+    let tail = m[5], meta = "";
+    const sm = tail.match(/<sub>([\s\S]*?)<\/sub>\s*$/);
+    if (sm) { meta = sm[1]; tail = tail.slice(0, sm.index); }
+    tail = tail.trim();
+    let star = null, intro = "";
+    if (tail.startsWith("⭐")) {
+      const k = tail.indexOf("：");
+      star = (k >= 0 ? tail.slice(1, k) : tail.slice(1)).trim();
+      intro = k >= 0 ? tail.slice(k + 1).trim() : "";
+    } else intro = tail.replace(/^：/, "").trim();
+    g.items.push({ checked: m[1] !== " ", id: m[2], title: m[3], url: m[4], star, intro, meta });
+  }
+  return { head, groups: groups.filter(x => x.items.length) };
+}
+async function renderBrief(day) {
+  const ov = S.issues.find(i => (i.title.match(OVERVIEW) || [])[1] === day);
+  if (!ov) { main.innerHTML = `<div class="card notice">${day} 没有简报。</div>`; return; }
+  const issue = await api(`/repos/${S.repo}/issues/${ov.number}`);
+  const p = parseBrief(issue.body || "");
+  B.issue = issue; B.items = p.groups.flatMap(g => g.items);
+  B.orig = new Set(B.items.filter(i => i.checked).map(i => i.id));
+  B.picked = new Set(B.orig);
+  const stars = B.items.filter(i => i.star !== null).length;
+  const ask = (p.head.match(/## 需要你决定[\s\S]*?(?=\n## |$)/) || [""])[0];
+  const trail = p.head.replace(ask, "").trim();
+  main.innerHTML = `
+    ${ask ? `<div class="card notice ask"><div class="md">${md(ask)}</div>${composeHTML("ov", "回复这个问题（发到简报 Issue 下）")}</div>` : ""}
+    ${trail ? `<details class="card trail"><summary>你的反馈去了哪里</summary><div class="md">${md(trail)}</div></details>` : ""}
+    <div class="filters">
+      <button class="chip" data-f="all">全部 ${B.items.length}</button>
+      <button class="chip" data-f="star">⭐ ${stars}</button>
+      <button class="chip" data-f="picked">已选 <span id="npicked">${B.picked.size}</span></button>
+      <a class="small muted" style="margin-left:auto;align-self:center" href="${esc(issue.html_url)}" target="_blank" rel="noopener">GitHub ↗</a>
+    </div>
+    <nav class="groupnav">${p.groups.map((g, k) => `<a href="#" data-g="${k}">${esc(g.name)}</a>`).join("")}</nav>
+    <div id="groups">${p.groups.map((g, k) => `
+      <section data-sec="${k}"><h2 class="group" id="g${k}">${esc(g.name)} <span class="n">${g.items.length}</span></h2>
+      ${g.items.map(itemHTML).join("")}</section>`).join("")}</div>`;
+  if (ask) wireCompose("ov", ov.number, () => toast("已回复"));
+  main.querySelectorAll(".chip[data-f]").forEach(b => b.onclick = () => { B.filter = b.dataset.f; store.set("filter", B.filter); applyFilter(); });
+  main.querySelectorAll(".groupnav a").forEach(a => a.onclick = e => { e.preventDefault(); document.getElementById("g" + a.dataset.g)?.scrollIntoView({behavior: "smooth"}); });
+  main.querySelector("#groups").onclick = e => {
+    if (e.target.closest("a")) return;
+    const el = e.target.closest(".item"); if (!el) return;
+    const id = el.dataset.id;
+    B.picked.has(id) ? B.picked.delete(id) : B.picked.add(id);
+    el.classList.toggle("sel", B.picked.has(id));
+    el.querySelector(".box").textContent = B.picked.has(id) ? "✓" : "";
+    el.classList.toggle("dirty", B.picked.has(id) !== B.orig.has(id));
+    $("#npicked").textContent = B.picked.size;
+    updateSaveBar();
+  };
+  applyFilter();
+  updateSaveBar();
+}
+function itemHTML(i) {
+  const on = B.picked.has(i.id);
+  return `<div class="card item ${on ? "sel" : ""}" data-id="${i.id}" data-star="${i.star !== null ? 1 : 0}">
+    <div class="box">${on ? "✓" : ""}</div>
+    <div class="body">
+      <div class="t">${esc(i.title)}</div>
+      ${i.star !== null ? `<span class="star">⭐ ${esc(i.star)}</span>` : ""}
+      ${i.intro ? `<div class="intro">${esc(i.intro)}</div>` : ""}
+      <div class="meta"><span class="id">${i.id}</span><span>${esc(i.meta.replace(/<[^>]+>/g, ""))}</span><a href="${esc(i.url)}" target="_blank" rel="noopener">原文 ↗</a></div>
+    </div></div>`;
+}
+function applyFilter() {
+  main.querySelectorAll(".chip[data-f]").forEach(b => b.classList.toggle("on", b.dataset.f === B.filter));
+  main.querySelectorAll(".item").forEach(el => {
+    const show = B.filter === "all" || (B.filter === "star" && el.dataset.star === "1") || (B.filter === "picked" && B.picked.has(el.dataset.id));
+    el.hidden = !show;
+  });
+  main.querySelectorAll("section[data-sec]").forEach(s => s.hidden = ![...s.querySelectorAll(".item")].some(x => !x.hidden));
+}
+function changes() {
+  const add = [...B.picked].filter(x => !B.orig.has(x)), del = [...B.orig].filter(x => !B.picked.has(x));
+  return { add, del, n: add.length + del.length };
+}
+function updateSaveBar() {
+  const c = changes();
+  if (!c.n) { hideBar(); return; }
+  showBar(`<span class="small muted" style="flex:1">${c.add.length ? `新选 ${c.add.length}` : ""}${c.add.length && c.del.length ? "，" : ""}${c.del.length ? `取消 ${c.del.length}` : ""}，尚未保存</span>
+    <button class="btn ghost" id="undo">撤销</button><button class="btn" id="save">保存勾选</button>`);
+  $("#undo").onclick = () => { B.picked = new Set(B.orig); main.querySelectorAll(".item").forEach(el => { const on = B.picked.has(el.dataset.id); el.classList.toggle("sel", on); el.classList.remove("dirty"); el.querySelector(".box").textContent = on ? "✓" : ""; }); $("#npicked").textContent = B.picked.size; applyFilter(); updateSaveBar(); };
+  $("#save").onclick = saveBrief;
+}
+async function saveBrief() {
+  const btn = $("#save"); btn.disabled = true; btn.innerHTML = `<span class="spin"></span>`;
+  try {
+    // re-read so that nothing written in the meantime (by Shan elsewhere or by the morning job) is lost
+    const fresh = await api(`/repos/${S.repo}/issues/${B.issue.number}`);
+    let body = fresh.body || "", missing = [];
+    for (const id of new Set([...B.picked, ...B.orig])) {
+      const re = new RegExp("^(\\s*[-*]\\s*\\[)[ xX](\\]\\s*`" + id + "`)", "m");
+      if (!re.test(body)) { missing.push(id); continue; }
+      body = body.replace(re, `$1${B.picked.has(id) ? "x" : " "}$2`);
+    }
+    if (body !== fresh.body) await api(`/repos/${S.repo}/issues/${B.issue.number}`, { method: "PATCH", body: JSON.stringify({ body }) });
+    B.orig = new Set(B.picked);
+    main.querySelectorAll(".item").forEach(el => el.classList.remove("dirty"));
+    hideBar();
+    toast(missing.length ? `已保存（${missing.join("、")} 在简报里找不到，没改）` : `已保存，共选 ${B.picked.size} 条`, 3200);
+  } catch (e) {
+    toast("保存失败：" + e.message, 5000);
+    btn.disabled = false; btn.textContent = "重试保存";
+  }
+}
+function guardLeave() {
+  if (route().view === "brief" && B.issue && changes().n) return confirm("勾选还没保存，确定离开？");
+  const ta = document.querySelector("textarea");
+  if (ta && ta.value.trim()) return confirm("评论还没发出，确定离开？");
+  return true;
+}
+window.addEventListener("beforeunload", e => { if ((route().view === "brief" && B.issue && changes().n) || (document.querySelector("textarea")?.value.trim())) { e.preventDefault(); e.returnValue = ""; } });
+
+// ---------- reports ----------
+function reportsOf(day) {
+  return S.issues.map(i => { const m = i.title.match(ITEM); return m && m[1] === day ? { n: i.number, pid: m[2], title: m[3], comments: i.comments, url: i.html_url } : null; })
+    .filter(Boolean).sort((a, b) => a.pid.localeCompare(b.pid, "en", { numeric: true }));
+}
+function renderReportList(day) {
+  const list = reportsOf(day);
+  if (!list.length) { main.innerHTML = `<div class="card notice">${day} 还没有深入报告。勾选后让 ChatGPT 开始深入研究，报告发布后会出现在这里。<br><button class="btn ghost" style="margin-top:10px" id="reload">刷新</button></div>`; $("#reload").onclick = async () => { await loadIssues(true); render(); }; return; }
+  const done = list.filter(r => r.comments > 0).length;
+  main.innerHTML = `<div class="rhead"><span class="muted small">${list.length} 篇 · 已评论 ${done} · 没评论的会记成「被标题误导」</span><span class="spacer"></span><button class="icon" id="reload">刷新</button></div>
+    <ul class="rlist">${list.map(r => `<li><a class="card" href="#/read/${day}/${r.pid}"><span class="pid">${r.pid}</span><span>${esc(r.title)}</span>
+      ${r.comments ? `<span class="done">已评 ✓</span>` : `<span class="todo">未评</span>`}</a></li>`).join("")}</ul>`;
+  $("#reload").onclick = async () => { await loadIssues(true); render(); };
+}
+async function renderReport(day, pid) {
+  const list = reportsOf(day);
+  const k = list.findIndex(r => r.pid === pid);
+  if (k < 0) { renderReportList(day); return; }
+  const r = list[k];
+  const [issue, comments] = await Promise.all([
+    api(`/repos/${S.repo}/issues/${r.n}`),
+    api(`/repos/${S.repo}/issues/${r.n}/comments?per_page=100`),
+  ]);
+  let body = (issue.body || "").replace(/\n---\n有想法就在下面评论[\s\S]*?(?=\n<sub>|$)/, "\n---\n");
+  const prev = list[k - 1], next = list[k + 1];
+  main.innerHTML = `<div class="reader">
+    <div class="rhead">
+      <a class="icon" href="#/read/${day}" style="text-decoration:none">目录</a>
+      <span class="muted small">${k + 1} / ${list.length}</span>
+      <span class="spacer"></span>
+      <button class="icon" id="fsdown">A−</button><button class="icon" id="fsup">A+</button>
+    </div>
+    <article class="card article">${md(body)}</article>
+    <div class="thread">${comments.map(commentHTML).join("")}</div>
+    ${composeHTML("rep", comments.some(c => isMe(c)) ? "再补一句" : "写下你的想法（没评论的会记成「被标题误导」）")}
+    <div class="pager" style="margin-top:22px">
+      ${prev ? `<a class="btn ghost" style="text-decoration:none" href="#/read/${day}/${prev.pid}">← ${prev.pid}</a>` : ""}
+      <span class="spacer"></span>
+      <a class="small muted" href="${esc(issue.html_url)}" target="_blank" rel="noopener">在 GitHub 打开</a>
+      <span class="spacer"></span>
+      ${next ? `<a class="btn ghost" style="text-decoration:none" href="#/read/${day}/${next.pid}">${next.pid} →</a>` : ""}
+    </div></div>`;
+  main.querySelectorAll(".article a").forEach(a => { a.target = "_blank"; a.rel = "noopener"; });
+  window.scrollTo(0, 0);
+  const bump = d => { const v = Math.min(26, Math.max(14, +store.get("fs", "18") + d)); store.set("fs", String(v)); applyPrefs(); };
+  $("#fsdown").onclick = () => bump(-1); $("#fsup").onclick = () => bump(1);
+  wireCompose("rep", r.n, c => {
+    r.comments++;
+    const it = S.issues.find(i => i.number === r.n); if (it) it.comments++;
+    main.querySelector(".thread").insertAdjacentHTML("beforeend", commentHTML(c));
+    toast(next ? `已发出。下一篇 ${next.pid}` : "已发出，这是今天最后一篇");
+  });
+}
+function isMe(c) { return S.login ? c.user.login === S.login : c.user.type !== "Bot"; }
+function commentHTML(c) {
+  const me = isMe(c), bot = c.user.type === "Bot";
+  const when = new Date(c.created_at).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return `<div class="card cmt ${me ? "me" : bot ? "bot" : ""}"><div class="who">${me ? "你" : bot ? "AI 回复" : esc(c.user.login)} · ${when}</div><div class="md">${md(c.body)}</div></div>`;
+}
+function composeHTML(key, ph) {
+  return `<div class="compose"><textarea id="ta-${key}" placeholder="${esc(ph)}"></textarea>
+    <div class="row"><span class="small muted" style="flex:1" id="hint-${key}"></span><button class="btn" id="send-${key}" disabled>发出评论</button></div></div>`;
+}
+function wireCompose(key, number, done) {
+  const ta = $("#ta-" + key), btn = $("#send-" + key);
+  const draftKey = "draft." + number;
+  ta.value = store.get(draftKey, "");
+  btn.disabled = !ta.value.trim();
+  ta.oninput = () => { btn.disabled = !ta.value.trim(); store.set(draftKey, ta.value); };
+  btn.onclick = async () => {
+    btn.disabled = true; btn.innerHTML = `<span class="spin"></span>`;
+    try {
+      const c = await api(`/repos/${S.repo}/issues/${number}/comments`, { method: "POST", body: JSON.stringify({ body: ta.value.trim() }) });
+      ta.value = ""; store.del(draftKey);
+      btn.textContent = "发出评论";
+      done(c);
+    } catch (e) {
+      toast("发送失败：" + e.message + "（草稿已保留）", 5000);
+      btn.disabled = false; btn.textContent = "重试";
+    }
+  };
+}
+
+// ---------- bottom bar ----------
+function showBar(html) { $("#bar-in").innerHTML = html; $("#bar").hidden = false; }
+function hideBar() { $("#bar").hidden = true; }
+
+// ---------- setup / settings ----------
+function setup(msg) {
+  setTop("brief", "");
+  main.innerHTML = `<div class="card setup">
+    <h2 style="margin-top:0">第一次使用</h2>
+    <p class="small">这个页面本身不含任何数据，内容是用你的密钥从私有仓库现取的。密钥只保存在这台设备的浏览器里。</p>
+    <ol>
+      <li>打开 <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub › 新建 fine-grained token</a></li>
+      <li>Repository access 选 <b>Only select repositories</b> → <b>daily_news</b></li>
+      <li>Permissions › Repository permissions › <b>Issues</b> 选 <b>Read and write</b>（其他都不用开）</li>
+      <li>生成后把 token 粘贴到下面</li>
+    </ol>
+    ${msg ? `<p class="err small">${esc(msg)}</p>` : ""}
+    <label class="small muted">仓库</label><input id="repo" value="${esc(S.repo)}">
+    <label class="small muted">密钥</label><input id="tok" type="password" placeholder="github_pat_…" autocomplete="off">
+    <button class="btn" id="go">保存并打开</button>
+  </div>`;
+  $("#go").onclick = async () => {
+    S.repo = $("#repo").value.trim(); S.token = $("#tok").value.trim();
+    if (!S.token) return;
+    try { await api(`/repos/${S.repo}`); } catch (e) { S.token = ""; return setup("连不上：" + e.message); }
+    store.set("repo", S.repo); store.set("token", S.token);
+    whoami(); render();
+  };
+}
+function settings() {
+  const th = store.get("theme", "");
+  showBar(`<span class="small" style="flex:1">外观：
+      <button class="chip ${th === "" ? "on" : ""}" data-t="">跟随系统</button>
+      <button class="chip ${th === "light" ? "on" : ""}" data-t="light">浅色</button>
+      <button class="chip ${th === "dark" ? "on" : ""}" data-t="dark">深色</button></span>
+    <button class="btn ghost" id="logout">清除密钥</button><button class="btn ghost" id="close">关闭</button>`);
+  document.querySelectorAll("#bar .chip").forEach(b => b.onclick = () => { b.dataset.t ? store.set("theme", b.dataset.t) : store.del("theme"); applyPrefs(); settings(); });
+  $("#logout").onclick = () => { if (confirm("清除这台设备上保存的密钥？")) { store.del("token"); S.token = ""; S.issues = null; hideBar(); render(); } };
+  $("#close").onclick = () => { hideBar(); if (route().view === "brief") updateSaveBar(); };
+}
+async function whoami() { try { S.login = (await api("/user")).login; } catch { /* fine-grained tokens may not read /user; fall back to bot check */ } }
+
+if (S.token) whoami();
+render();
+</script>
+</body>
+</html>
