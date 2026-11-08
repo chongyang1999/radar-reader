@@ -78,6 +78,16 @@ details.trail{margin:8px 0 4px}
 details.trail summary{cursor:pointer;color:var(--ink2);padding:10px 14px}
 details.trail .md{padding:0 16px 12px;font-size:14px}
 .ask{border-color:var(--accent)}
+/* archive */
+.search{width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--paper);font-size:16px}
+.acard{padding:12px 16px;margin:10px 0}
+.acard .tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
+.tag{font-size:12px;padding:1px 8px;border-radius:6px;background:var(--accent-soft);color:var(--accent)}
+.tag.warn{background:var(--line);color:var(--ink2)}
+.acard .quote{font-family:var(--serif);font-size:16px;line-height:1.8}
+.acard .quote p{margin:.3em 0}
+.acard .src{display:block;margin-top:8px;font-size:13.5px;color:var(--ink2);text-decoration:none;border-top:1px dashed var(--line);padding-top:7px}
+.acard .src .pid{font-family:ui-monospace,Menlo,monospace;color:var(--ink3);font-size:12px}
 /* reader */
 .rlist{list-style:none;margin:0;padding:0}
 .rlist li{margin:8px 0}
@@ -125,7 +135,7 @@ textarea:focus,input:focus{outline:2px solid var(--accent);outline-offset:1px}
 <body>
 <header class="top"><div class="top-in">
   <span class="brand">每日雷达</span>
-  <div class="tabs"><button id="tab-brief">简报</button><button id="tab-read">报告</button></div>
+  <div class="tabs"><button id="tab-brief">简报</button><button id="tab-read">报告</button><button id="tab-arch">分类</button></div>
   <span class="spacer"></span>
   <select id="day" class="icon" aria-label="日期"></select>
   <button id="menu" class="icon" aria-label="设置">⋯</button>
@@ -202,16 +212,18 @@ function route() {
 }
 function go(view, day, pid) { location.hash = "#/" + [view, day, pid].filter(Boolean).join("/"); }
 window.addEventListener("hashchange", render);
-$("#tab-brief").onclick = () => { if (!guardLeave()) return; go("brief", route().day); };
-$("#tab-read").onclick = () => { if (!guardLeave()) return; go("read", route().day); };
+$("#tab-brief").onclick = () => { if (!guardLeave()) return; go("brief", route().view === "archive" ? "" : route().day); };
+$("#tab-read").onclick = () => { if (!guardLeave()) return; go("read", route().view === "archive" ? "" : route().day); };
+$("#tab-arch").onclick = () => { if (!guardLeave()) return; go("archive"); };
 $("#day").onchange = e => { if (!guardLeave()) { e.target.value = route().day; return; } go(route().view === "read" ? "read" : "brief", e.target.value); };
 $("#menu").onclick = settings;
 
 function setTop(view, day) {
   $("#tab-brief").classList.toggle("on", view === "brief");
-  $("#tab-read").classList.toggle("on", view !== "brief");
+  $("#tab-read").classList.toggle("on", view === "read");
+  $("#tab-arch").classList.toggle("on", view === "archive");
   const sel = $("#day");
-  if (!S.issues) { sel.hidden = true; return; }
+  if (!S.issues || view === "archive") { sel.hidden = true; return; }
   sel.hidden = false;
   sel.innerHTML = days().map(d => `<option value="${d}" ${d === day ? "selected" : ""}>${d.slice(5).replace("-", "月")}日</option>`).join("");
 }
@@ -223,6 +235,7 @@ async function render() {
   main.innerHTML = `<p class="muted"><span class="spin"></span> 读取中…</p>`;
   try {
     await loadIssues();
+    if (r.view === "archive") { setTop("archive"); await renderArchive(decodeURIComponent(r.day)); return; }
     const day = r.day || days()[0];
     if (!day) { setTop(r.view, ""); main.innerHTML = `<div class="card notice">还没有任何简报。</div>`; return; }
     setTop(r.view, day);
@@ -230,6 +243,7 @@ async function render() {
     else if (r.view === "read") renderReportList(day);
     else await renderBrief(day);
   } catch (e) {
+    if (e.status === 403 && r.view === "archive") { main.innerHTML = `<div class="card notice err">读不到分类存档：密钥还没有仓库文件的读取权限。请到 GitHub › Settings › Fine-grained tokens，给这个密钥加上 Repository permissions › <b>Contents: Read-only</b>（密钥本身不变，不用重新填）。</div>`; return; }
     if (e.status === 401) { main.innerHTML = `<div class="card notice err">密钥无效或已过期。请点右上角 ⋯ 重新填写。</div>`; return; }
     main.innerHTML = `<div class="card notice err">${esc(e.message)}</div>`;
   }
@@ -447,6 +461,77 @@ function wireCompose(key, number, done) {
   };
 }
 
+// ---------- archive (read only) ----------
+const A = { entries: null, at: 0, q: "", shown: 80 };
+const MISLED = "被标题误导";
+async function loadArchive() {
+  if (A.entries && Date.now() - A.at < 5 * 60e3) return A.entries;
+  const r = await fetch(`https://api.github.com/repos/${S.repo}/contents/archive/entries.json`, {
+    cache: "no-store",
+    headers: { "Accept": "application/vnd.github.raw+json", "Authorization": "Bearer " + S.token, "X-GitHub-Api-Version": "2022-11-28" } });
+  if (!r.ok) { const e = new Error(`GitHub ${r.status}`); e.status = r.status; throw e; }
+  A.entries = await r.json(); A.at = Date.now();
+  return A.entries;
+}
+function archiveRows(entries) {
+  const rows = [];
+  for (const e of Object.values(entries)) {
+    const base = { issue: e.issue, date: e.date || "", item: e.item || "", title: e.title || "", url: e.url || "" };
+    for (const [cid, c] of Object.entries(e.comments || {}))
+      rows.push({ ...base, cid, body: c.body || "", cats: c.categories || [], at: c.created_at || e.date || "", link: c.url });
+    if (e.misled) rows.push({ ...base, cid: "m" + e.issue, body: "", cats: [MISLED], at: (e.date || "") + "T00:00:00Z", misled: true });
+  }
+  return rows.sort((a, b) => b.at.localeCompare(a.at));
+}
+async function pendingCount(entries) {
+  // comments written after the last classification that the next morning run will classify
+  const known = new Set(Object.values(entries).flatMap(e => Object.keys(e.comments || {})));
+  const last = Object.values(entries).flatMap(e => Object.values(e.comments || {}).map(c => c.created_at || "")).sort().pop();
+  if (!last) return 0;
+  const items = new Set(S.issues.filter(i => ITEM.test(i.title)).map(i => i.number));
+  const rows = await api(`/repos/${S.repo}/issues/comments?since=${encodeURIComponent(last)}&per_page=100`);
+  return rows.filter(c => c.user.type !== "Bot" && !known.has(String(c.id)) && items.has(+c.issue_url.split("/").pop())).length;
+}
+async function renderArchive(cat) {
+  const entries = await loadArchive();
+  const rows = archiveRows(entries);
+  const counts = {};
+  rows.forEach(r => r.cats.forEach(c => counts[c] = (counts[c] || 0) + 1));
+  const cats = Object.keys(counts).sort((a, b) => (a === MISLED) - (b === MISLED) || counts[b] - counts[a]);
+  const nComments = rows.filter(r => !r.misled).length;
+  main.innerHTML = `
+    <div class="small muted" style="margin:4px 2px 10px">你的评论 ${nComments} 条 · 被标题误导 ${counts[MISLED] || 0} 篇 <span id="pending"></span></div>
+    <input id="q" class="search" type="search" placeholder="在你的评论和标题里搜…" value="${esc(A.q)}">
+    <div class="filters" style="margin-top:10px">
+      <button class="chip ${cat ? "" : "on"}" data-c="">全部</button>
+      ${cats.map(c => `<button class="chip ${c === cat ? "on" : ""}" data-c="${esc(c)}">${esc(c)} ${counts[c]}</button>`).join("")}
+    </div>
+    <div id="alist"></div>`;
+  main.querySelectorAll(".chip[data-c]").forEach(b => b.onclick = () => { A.shown = 80; go("archive", b.dataset.c ? encodeURIComponent(b.dataset.c) : ""); });
+  const q = $("#q");
+  q.oninput = () => { A.q = q.value; A.shown = 80; draw(); };
+  function draw() {
+    const words = A.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const list = rows.filter(r => (!cat || r.cats.includes(cat)) &&
+      words.every(w => (r.body + " " + r.title).toLowerCase().includes(w)));
+    $("#alist").innerHTML = (list.length ? "" : `<div class="card notice muted">没有符合的。</div>`) +
+      list.slice(0, A.shown).map(archiveCard).join("") +
+      (list.length > A.shown ? `<button class="btn ghost" id="more" style="width:100%;margin-top:8px">再显示 ${Math.min(80, list.length - A.shown)} 条（共 ${list.length}）</button>` : "");
+    const more = $("#more"); if (more) more.onclick = () => { A.shown += 80; draw(); };
+  }
+  draw();
+  pendingCount(entries).then(n => { if (n) $("#pending").textContent = `· 还有 ${n} 条等明早归类`; }).catch(() => {});
+}
+function archiveCard(r) {
+  const inReader = S.issues.some(i => i.number === r.issue) && r.date && r.item;
+  const href = inReader ? `#/read/${r.date}/${r.item}` : `https://github.com/${S.repo}/issues/${r.issue}`;
+  return `<div class="card acard">
+    <div class="tags">${r.cats.map(c => `<span class="tag ${c === MISLED ? "warn" : ""}">${esc(c)}</span>`).join("")}<span class="muted small" style="margin-left:auto">${esc(r.at.slice(0, 10))}</span></div>
+    ${r.misled ? `<div class="muted small">勾了但没有评论</div>` : `<div class="md quote">${md(r.body)}</div>`}
+    <a class="src" href="${esc(href)}" ${inReader ? "" : `target="_blank" rel="noopener"`}><span class="pid">${esc(r.item)}</span> ${esc(r.title)}</a>
+  </div>`;
+}
+
 // ---------- bottom bar ----------
 function showBar(html) { $("#bar-in").innerHTML = html; $("#bar").hidden = false; }
 function hideBar() { $("#bar").hidden = true; }
@@ -460,7 +545,7 @@ function setup(msg) {
     <ol>
       <li>打开 <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub › 新建 fine-grained token</a></li>
       <li>Repository access 选 <b>Only select repositories</b> → <b>daily_news</b></li>
-      <li>Permissions › Repository permissions › <b>Issues</b> 选 <b>Read and write</b>（其他都不用开）</li>
+      <li>Permissions › Repository permissions › <b>Issues</b> 选 <b>Read and write</b>，<b>Contents</b> 选 <b>Read-only</b>（分类页要读存档文件；其他都不用开）</li>
       <li>生成后把 token 粘贴到下面</li>
     </ol>
     ${msg ? `<p class="err small">${esc(msg)}</p>` : ""}
