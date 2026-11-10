@@ -345,8 +345,7 @@ function updateSaveBar() {
   const c = changes();
   if (!c.n) { hideBar(); return; }
   showBar(`<span class="small muted" style="flex:1">${c.add.length ? `新选 ${c.add.length}` : ""}${c.add.length && c.del.length ? "，" : ""}${c.del.length ? `取消 ${c.del.length}` : ""}，尚未保存</span>
-    <button class="btn ghost" id="undo">撤销</button><button class="btn" id="save">保存勾选</button>`);
-  $("#undo").onclick = () => { B.picked = new Set(B.orig); main.querySelectorAll(".item").forEach(el => { const on = B.picked.has(el.dataset.id); el.classList.toggle("sel", on); el.classList.remove("dirty"); el.querySelector(".box").textContent = on ? "✓" : ""; }); $("#npicked").textContent = B.picked.size; applyFilter(); updateSaveBar(); };
+    <button class="btn" id="save">保存勾选</button>`);
   $("#save").onclick = saveBrief;
 }
 async function saveBrief() {
